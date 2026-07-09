@@ -9,11 +9,18 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     sqlite3 \
-    libsqlite3-dev
-
-RUN docker-php-ext-install pdo pdo_mysql pdo_sqlite zip
+    libsqlite3-dev \
+    && docker-php-ext-install pdo pdo_mysql pdo_sqlite zip \
+    && a2enmod rewrite
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf
 
 WORKDIR /var/www/html
 
@@ -26,10 +33,6 @@ RUN cp .env.example .env || true
 RUN php artisan key:generate || true
 
 RUN chown -R www-data:www-data storage bootstrap/cache
-
-RUN a2enmod rewrite
-
-COPY .docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
 
